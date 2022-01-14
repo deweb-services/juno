@@ -216,16 +216,18 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 		valAddr := sdk.ConsAddress(commitSig.ValidatorAddress)
 		val := findValidatorByAddr(valAddr.String(), vals)
 		if val == nil {
-			return fmt.Errorf("failed to find validator by commit validator address %s", valAddr.String())
+			// return fmt.Errorf("failed to find validator by commit validator address %s", valAddr.String())
+			continue
 		}
-
-		signatures = append(signatures, types.NewCommitSig(
-			types.ConvertValidatorAddressToBech32String(commitSig.ValidatorAddress),
-			val.VotingPower,
-			val.ProposerPriority,
-			commit.Height,
-			commitSig.Timestamp,
-		))
+		if val != nil {
+			signatures = append(signatures, types.NewCommitSig(
+				types.ConvertValidatorAddressToBech32String(commitSig.ValidatorAddress),
+				val.VotingPower,
+				val.ProposerPriority,
+				commit.Height,
+				commitSig.Timestamp,
+			))
+		}
 	}
 
 	err := w.db.SaveCommitSignatures(signatures)
