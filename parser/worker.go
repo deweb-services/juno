@@ -170,11 +170,11 @@ func (w Worker) ExportBlock(
 	}
 
 	// Make sure the proposer exists
-	proposerAddr := sdk.ConsAddress(b.Block.ProposerAddress)
-	val := findValidatorByAddr(proposerAddr.String(), vals)
-	if val == nil {
-		return fmt.Errorf("failed to find validator by proposer address %s: %s", proposerAddr.String(), err)
-	}
+	// proposerAddr := sdk.ConsAddress(b.Block.ProposerAddress)
+	// val := findValidatorByAddr(proposerAddr.String(), vals)
+	// if val == nil {
+	// 	return fmt.Errorf("failed to find validator by proposer address %s: %s", proposerAddr.String(), err)
+	// }
 
 	// Save the block
 	err = w.db.SaveBlock(types.NewBlockFromTmBlock(b, sumGasTxs(txs)))
