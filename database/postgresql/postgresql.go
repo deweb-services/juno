@@ -129,7 +129,7 @@ func (db *Database) CreateTxPartition(height int64) (int64, error) {
 	stmt := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS tx_partition_%d PARTITION OF transaction FOR VALUES IN (%d)",
 		partitionId,
-		partitionId
+		partitionId,
 	)
 
 	_, err := db.Sql.Exec(stmt)
