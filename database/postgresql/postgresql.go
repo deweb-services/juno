@@ -133,7 +133,7 @@ func (db *Database) CreateTxPartition(height int64) (int64, error) {
 
 	_, err := db.Sql.Exec(stmt)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to create new partition, error:  %s", err)
 	}
 
 	return partitionId, nil
