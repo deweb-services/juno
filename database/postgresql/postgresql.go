@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/forbole/juno/v2/logging"
-	"github.com/forbole/juno/v2/types/config"
 
 	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/lib/pq"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/forbole/juno/v2/database"
 	"github.com/forbole/juno/v2/types"
+	"github.com/forbole/juno/v2/types/config"
 )
 
 // Builder creates a database connection with the given database connection info
@@ -125,9 +125,13 @@ func (db *Database) CreateTxPartition(height int64) (int64, error) {
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
 	// partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
 
-	stmt := `CREATE TABLE IF NOT EXISTS tx_partition_$1 PARTITION OF transaction FOR VALUES IN ($2)`
+	stmt := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS tx_partition_%d PARTITION OF transaction FOR VALUES IN (%d)",
+		partitionId,
+		partitionId,
+	)
 
-	_, err := db.Sql.Exec(stmt, partitionId, partitionId)
+	_, err := db.Sql.Exec(stmt)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create new partition, error:  %s", err)
 	}
