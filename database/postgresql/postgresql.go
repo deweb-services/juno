@@ -124,6 +124,7 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 func (db *Database) CreateTxPartition(height int64) (int64, error) {
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
 	// partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
+	fmt.Printf("partitionId %d", partitionId)
 
 	stmt := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS tx_partition_%d PARTITION OF transaction FOR VALUES IN (%d)",
