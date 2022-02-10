@@ -78,6 +78,7 @@ type DatabaseConfig struct {
 	Schema             string `toml:"schema"`
 	MaxOpenConnections int    `toml:"max_open_connections"`
 	MaxIdleConnections int    `toml:"max_idle_connections"`
+	PartitionSize      int    `toml:"partition_size"`
 }
 
 type LoggingConfig struct {

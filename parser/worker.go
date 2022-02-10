@@ -198,8 +198,14 @@ func (w Worker) ExportBlock(
 		}
 	}
 
+	// create partition table if not exist for transaction
+	partitionId, err := w.db.CreateTxPartition(b.Block.Height)
+	if err != nil {
+		return err
+	}
+
 	// Export the transactions
-	return w.ExportTxs(txs)
+	return w.ExportTxs(txs, partitionId)
 }
 
 // ExportCommit accepts a block commitment and a corresponding set of
@@ -238,11 +244,11 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 
 // ExportTxs accepts a slice of transactions and persists then inside the database.
 // An error is returned if the write fails.
-func (w Worker) ExportTxs(txs []*types.Tx) error {
+func (w Worker) ExportTxs(txs []*types.Tx, partitionId int64) error {
 	// Handle all the transactions inside the block
 	for _, tx := range txs {
 		// Save the transaction itself
-		err := w.db.SaveTx(tx)
+		err := w.db.SaveTx(tx, partitionId)
 		if err != nil {
 			return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
 		}

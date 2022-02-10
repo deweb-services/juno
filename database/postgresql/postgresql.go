@@ -15,6 +15,7 @@ import (
 
 	"github.com/forbole/juno/v2/database"
 	"github.com/forbole/juno/v2/types"
+	"github.com/forbole/juno/v2/types/config"
 )
 
 // Builder creates a database connection with the given database connection info
@@ -119,12 +120,26 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 	return err
 }
 
+// CreateTxPartition implements database.Database
+func (db *Database) CreateTxPartition(height int64) (int64, error) {
+	partitionId := height / int64(config.Cfg.Database.PartitionSize)
+	partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
+
+	stmt := "CREATE TABLE IF NOT EXISTS $1 PARTITION OF transaction FOR VALUES IN ($2)"
+	_, err := db.Sql.Exec(stmt, partitionTable, partitionId)
+	if err != nil {
+		return 0, err
+	}
+
+	return partitionId, nil
+}
+
 // SaveTx implements database.Database
-func (db *Database) SaveTx(tx *types.Tx) error {
+func (db *Database) SaveTx(tx *types.Tx, partitionId int64) error {
 	sqlStatement := `
 INSERT INTO transaction 
-    (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT DO NOTHING`
+    (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs, partition_id) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT DO NOTHING`
 
 	var sigs = make([]string, len(tx.Signatures))
 	for index, sig := range tx.Signatures {
@@ -166,6 +181,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT DO NOTHIN
 		msgsBz, tx.Body.Memo, pq.Array(sigs),
 		sigInfoBz, string(feeBz),
 		tx.GasWanted, tx.GasUsed, tx.RawLog, string(logsBz),
+		partitionId,
 	)
 	return err
 }
