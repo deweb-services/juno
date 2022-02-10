@@ -6,8 +6,8 @@ CREATE TABLE validator
 
 CREATE TABLE block
 (
-    height           BIGINT UNIQUE PRIMARY KEY,
-    hash             TEXT                        NOT NULL UNIQUE,
+    height           BIGINT  UNIQUE PRIMARY KEY,
+    hash             TEXT    NOT NULL UNIQUE,
     num_txs          INTEGER DEFAULT 0,
     total_gas        BIGINT  DEFAULT 0,
     proposer_address TEXT REFERENCES validator (consensus_address),
@@ -30,7 +30,7 @@ CREATE INDEX pre_commit_height_index ON pre_commit (height);
 
 CREATE TABLE transaction
 (
-    hash         TEXT    NOT NULL UNIQUE PRIMARY KEY,
+    hash         TEXT    NOT NULL UNIQUE,
     height       BIGINT  NOT NULL REFERENCES block (height),
     success      BOOLEAN NOT NULL,
 
@@ -47,8 +47,12 @@ CREATE TABLE transaction
     gas_wanted   BIGINT           DEFAULT 0,
     gas_used     BIGINT           DEFAULT 0,
     raw_log      TEXT,
-    logs         JSONB
-);
+    logs         JSONB,
+
+    /* Psql partition */
+    partition_id BIGINT NOT NULL,
+    PRIMARY KEY(hash, partition_id)
+)PARTITION BY LIST(partition_id);
 CREATE INDEX transaction_hash_index ON transaction (hash);
 CREATE INDEX transaction_height_index ON transaction (height);
 
@@ -59,7 +63,7 @@ CREATE TABLE message
     type                        TEXT   NOT NULL,
     value                       JSONB  NOT NULL,
     involved_accounts_addresses TEXT[] NULL
-);
+)PARTITION BY LIST(type);;
 CREATE INDEX message_transaction_hash_index ON message (transaction_hash);
 
 CREATE TABLE pruning
