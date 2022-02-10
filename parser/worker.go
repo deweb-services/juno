@@ -201,7 +201,7 @@ func (w Worker) ExportBlock(
 	// create partition table if not exist for transaction
 	partitionId, err := w.db.CreateTxPartition(b.Block.Height)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create partition for transaction: %s", err)
 	}
 
 	// Export the transactions
