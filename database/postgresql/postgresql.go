@@ -317,3 +317,12 @@ WHERE message.transaction_hash = transaction.hash AND transaction.height = $1
 `, height)
 	return err
 }
+
+// DropTable removes given table from db
+func (db *Database) DropTable(name string) error {
+	_, err := db.Sql.Exec(`DROP TABLE IF EXISTS %s`, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
