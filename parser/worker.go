@@ -198,14 +198,8 @@ func (w Worker) ExportBlock(
 		}
 	}
 
-	// create partition table if not exist for transaction
-	partitionId, err := w.db.CreateTxPartition(b.Block.Height)
-	if err != nil {
-		return err
-	}
-
 	// Export the transactions
-	return w.ExportTxs(txs, partitionId)
+	return w.ExportTxs(txs, b.Block.Height)
 }
 
 // ExportCommit accepts a block commitment and a corresponding set of
@@ -244,44 +238,52 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 
 // ExportTxs accepts a slice of transactions and persists then inside the database.
 // An error is returned if the write fails.
-func (w Worker) ExportTxs(txs []*types.Tx, partitionId int64) error {
-	// Handle all the transactions inside the block
-	for _, tx := range txs {
-		// Save the transaction itself
-		err := w.db.SaveTx(tx, partitionId)
+func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
+	if len(txs) > 0 {
+		// create partition table if not exist for transaction
+		partitionId, err := w.db.CreateTxPartition(height)
 		if err != nil {
-			return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
+			return err
 		}
 
-		// Call the tx handlers
-		for _, module := range w.modules {
-			if transactionModule, ok := module.(modules.TransactionModule); ok {
-				err = transactionModule.HandleTx(tx)
-				if err != nil {
-					w.logger.TxError(module, tx, err)
+		// Handle all the transactions inside the block
+		for _, tx := range txs {
+			// Save the transaction itself
+			err := w.db.SaveTx(tx, partitionId)
+			if err != nil {
+				return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
+			}
+
+			// Call the tx handlers
+			for _, module := range w.modules {
+				if transactionModule, ok := module.(modules.TransactionModule); ok {
+					err = transactionModule.HandleTx(tx)
+					if err != nil {
+						w.logger.TxError(module, tx, err)
+					}
 				}
 			}
-		}
 
-		// Handle all the messages contained inside the transaction
-		for i, msg := range tx.Body.Messages {
-			var stdMsg sdk.Msg
-			err = w.codec.UnpackAny(msg, &stdMsg)
-			if err != nil {
-				return fmt.Errorf("error while unpacking message: %s", err)
-			}
+			// Handle all the messages contained inside the transaction
+			for i, msg := range tx.Body.Messages {
+				var stdMsg sdk.Msg
+				err = w.codec.UnpackAny(msg, &stdMsg)
+				if err != nil {
+					return fmt.Errorf("error while unpacking message: %s", err)
+				}
 
-			err := w.db.CreateMsgPartition(msg.GetTypeUrl())
-			if err != nil {
-				return err
-			}
+				err := w.db.CreateMsgPartition(msg.GetTypeUrl())
+				if err != nil {
+					return err
+				}
 
-			// Call the handlers
-			for _, module := range w.modules {
-				if messageModule, ok := module.(modules.MessageModule); ok {
-					err = messageModule.HandleMsg(i, stdMsg, tx)
-					if err != nil {
-						w.logger.MsgError(module, tx, stdMsg, err)
+				// Call the handlers
+				for _, module := range w.modules {
+					if messageModule, ok := module.(modules.MessageModule); ok {
+						err = messageModule.HandleMsg(i, stdMsg, tx)
+						if err != nil {
+							w.logger.MsgError(module, tx, stdMsg, err)
+						}
 					}
 				}
 			}
