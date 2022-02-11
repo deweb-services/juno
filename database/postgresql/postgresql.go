@@ -249,13 +249,12 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 func (db *Database) CreateMsgPartition(msgType string) error {
 	msg := msgType[1:]
 	partitionTable := fmt.Sprintf("msg_partition_%s", strings.Replace(msg, ".", "_", -1))
-	partitionMsg := fmt.Sprintf("%s", msg)
 	fmt.Println("Create partition msg table: ", partitionTable)
 
 	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN (%s)",
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN ('%s')",
 		partitionTable,
-		partitionMsg,
+		msg,
 	)
 	_, err := db.Sql.Exec(stmt)
 
