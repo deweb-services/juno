@@ -32,7 +32,7 @@ type Database interface {
 
 	// CreateMsgPartition create msg postgres partition table if not already exist.
 	// An error is returned if the operation fails.
-	CreateMsgPartition(msgType string) error
+	CreateMsgPartition(height int64) (int64, error)
 
 	// HasValidator returns true if a given validator by consensus address exists.
 	// An error is returned if the operation fails.

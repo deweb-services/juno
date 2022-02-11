@@ -241,7 +241,7 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 	if len(txs) > 0 {
 		// create partition table if not exist for transaction
-		partitionId, err := w.db.CreateTxPartition(height)
+		txPartitionID, err := w.db.CreateTxPartition(height)
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 		// Handle all the transactions inside the block
 		for _, tx := range txs {
 			// Save the transaction itself
-			err := w.db.SaveTx(tx, partitionId)
+			err := w.db.SaveTx(tx, txPartitionID)
 			if err != nil {
 				return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
 			}
@@ -272,7 +272,7 @@ func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 					return fmt.Errorf("error while unpacking message: %s", err)
 				}
 
-				err := w.db.CreateMsgPartition(msg.GetTypeUrl())
+				msgPartitionID, err := w.db.CreateMsgPartition(height)
 				if err != nil {
 					return err
 				}
@@ -280,7 +280,7 @@ func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 				// Call the handlers
 				for _, module := range w.modules {
 					if messageModule, ok := module.(modules.MessageModule); ok {
-						err = messageModule.HandleMsg(i, stdMsg, tx)
+						err = messageModule.HandleMsg(i, stdMsg, tx, msgPartitionID)
 						if err != nil {
 							w.logger.MsgError(module, tx, stdMsg, err)
 						}

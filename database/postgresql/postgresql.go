@@ -246,33 +246,55 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 	return err
 }
 
-func (db *Database) CreateMsgPartition(msgType string) error {
-	msg := msgType[1:]
-	msgType = strings.Replace(msg, ".", "_", -1)
-	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msgType, "_v1beta1_", "_", -1))
+// func (db *Database) CreateMsgPartition(msgType string) error {
+// 	msg := msgType[1:]
+// 	msgType = strings.Replace(msg, ".", "_", -1)
+// 	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msgType, "_v1beta1_", "_", -1))
+// 	fmt.Println("Create partition msg table: ", partitionTable)
+
+// 	stmt := fmt.Sprintf(
+// 		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN ('%s')",
+// 		partitionTable,
+// 		msg,
+// 	)
+// 	_, err := db.Sql.Exec(stmt)
+
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// CreateTxPartition implements database.Database
+func (db *Database) CreateMsgPartition(height int64) (int64, error) {
+
+	partitionID := height / int64(config.Cfg.Database.PartitionSize)
+	partitionTable := fmt.Sprintf("msg_%d", partitionID)
+
 	fmt.Println("Create partition msg table: ", partitionTable)
 
 	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN ('%s')",
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN (%d)",
 		partitionTable,
-		msg,
+		partitionID,
 	)
 	_, err := db.Sql.Exec(stmt)
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return partitionID, nil
 }
 
 // SaveMessage implements database.Database
 func (db *Database) SaveMessage(msg *types.Message) error {
 	stmt := `
-INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses) 
-VALUES ($1, $2, $3, $4, $5)`
+INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id) 
+VALUES ($1, $2, $3, $4, $5, $6)`
 
-	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses))
+	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), msg.PartitionID)
 	return err
 }
 
