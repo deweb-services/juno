@@ -121,12 +121,12 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 }
 
 // CreateTxPartition implements database.Database
-func (db *Database) CreateTxPartition(height int64) (int64, error) {
+func (db *Database) CreatePartition(table string, height int64) (int64, error) {
 
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
-	partitionTable := fmt.Sprintf("tx_%d", partitionId)
+	partitionTable := fmt.Sprintf("%s_%d", table, partitionId)
 
-	fmt.Println("Create partition tx table: ", partitionTable)
+	fmt.Printf("Create partition %s table: %s", table, partitionTable)
 
 	stmt := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s PARTITION OF transaction FOR VALUES IN (%d)",
@@ -244,48 +244,6 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 	stmt += " ON CONFLICT (validator_address, timestamp) DO NOTHING"
 	_, err := db.Sql.Exec(stmt, sparams...)
 	return err
-}
-
-// func (db *Database) CreateMsgPartition(msgType string) error {
-// 	msg := msgType[1:]
-// 	msgType = strings.Replace(msg, ".", "_", -1)
-// 	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msgType, "_v1beta1_", "_", -1))
-// 	fmt.Println("Create partition msg table: ", partitionTable)
-
-// 	stmt := fmt.Sprintf(
-// 		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN ('%s')",
-// 		partitionTable,
-// 		msg,
-// 	)
-// 	_, err := db.Sql.Exec(stmt)
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// CreateTxPartition implements database.Database
-func (db *Database) CreateMsgPartition(height int64) (int64, error) {
-
-	partitionID := height / int64(config.Cfg.Database.PartitionSize)
-	partitionTable := fmt.Sprintf("msg_%d", partitionID)
-
-	fmt.Println("Create partition msg table: ", partitionTable)
-
-	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN (%d)",
-		partitionTable,
-		partitionID,
-	)
-	_, err := db.Sql.Exec(stmt)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return partitionID, nil
 }
 
 // SaveMessage implements database.Database

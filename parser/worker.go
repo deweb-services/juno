@@ -241,7 +241,7 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 	if len(txs) > 0 {
 		// create partition table if not exist for transaction
-		txPartitionID, err := w.db.CreateTxPartition(height)
+		partitionId, err := w.db.CreatePartition("tx", height)
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 		// Handle all the transactions inside the block
 		for _, tx := range txs {
 			// Save the transaction itself
-			err := w.db.SaveTx(tx, txPartitionID)
+			err := w.db.SaveTx(tx, partitionId)
 			if err != nil {
 				return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
 			}
@@ -272,7 +272,7 @@ func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 					return fmt.Errorf("error while unpacking message: %s", err)
 				}
 
-				msgPartitionID, err := w.db.CreateMsgPartition(height)
+				msgPartitionID, err := w.db.CreatePartition("msg", height)
 				if err != nil {
 					return err
 				}
