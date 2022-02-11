@@ -271,6 +271,11 @@ func (w Worker) ExportTxs(txs []*types.Tx, partitionId int64) error {
 				return fmt.Errorf("error while unpacking message: %s", err)
 			}
 
+			err := w.db.CreateMsgPartition(msg.GetTypeUrl())
+			if err != nil {
+				return err
+			}
+
 			// Call the handlers
 			for _, module := range w.modules {
 				if messageModule, ok := module.(modules.MessageModule); ok {

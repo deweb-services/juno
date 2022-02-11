@@ -126,7 +126,7 @@ func (db *Database) CreateTxPartition(height int64) (int64, error) {
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
 	partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
 
-	fmt.Println("Create partition table: ", partitionTable)
+	fmt.Println("Create partition tx table: ", partitionTable)
 
 	stmt := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s PARTITION OF transaction FOR VALUES IN (%d)",
@@ -244,6 +244,25 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 	stmt += " ON CONFLICT (validator_address, timestamp) DO NOTHING"
 	_, err := db.Sql.Exec(stmt, sparams...)
 	return err
+}
+
+func (db *Database) CreateMsgPartition(msgType string) error {
+	partitionTable := fmt.Sprintf("msg_partition_%s", strings.Replace(msgType, ".", "_", -1))
+
+	fmt.Println("Create partition msg table: ", partitionTable)
+
+	stmt := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN (%s)",
+		partitionTable,
+		msgType,
+	)
+	_, err := db.Sql.Exec(stmt)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SaveMessage implements database.Database

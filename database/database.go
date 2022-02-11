@@ -26,9 +26,13 @@ type Database interface {
 	// An error is returned if the operation fails.
 	SaveTx(tx *types.Tx, partition_id int64) error
 
-	// CreateTxPartition create a postgres partition table if not already exist.
+	// CreateTxPartition create tx postgres partition table if not already exist.
 	// An error is returned if the operation fails.
 	CreateTxPartition(height int64) (int64, error)
+
+	// CreateMsgPartition create msg postgres partition table if not already exist.
+	// An error is returned if the operation fails.
+	CreateMsgPartition(msgType string) error
 
 	// HasValidator returns true if a given validator by consensus address exists.
 	// An error is returned if the operation fails.
