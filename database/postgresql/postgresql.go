@@ -248,7 +248,8 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 
 func (db *Database) CreateMsgPartition(msgType string) error {
 	msg := msgType[1:]
-	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msg, ".", "_", -1))
+	msgType = strings.Replace(msg, ".", "_", -1)
+	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msgType, "_v1beta1_", "_", -1))
 	fmt.Println("Create partition msg table: ", partitionTable)
 
 	stmt := fmt.Sprintf(
