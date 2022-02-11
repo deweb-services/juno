@@ -124,7 +124,7 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 func (db *Database) CreateTxPartition(height int64) (int64, error) {
 
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
-	partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
+	partitionTable := fmt.Sprintf("tx_%d", partitionId)
 
 	fmt.Println("Create partition tx table: ", partitionTable)
 
@@ -248,7 +248,7 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 
 func (db *Database) CreateMsgPartition(msgType string) error {
 	msg := msgType[1:]
-	partitionTable := fmt.Sprintf("msg_partition_%s", strings.Replace(msg, ".", "_", -1))
+	partitionTable := fmt.Sprintf("msg_%s", strings.Replace(msg, ".", "_", -1))
 	fmt.Println("Create partition msg table: ", partitionTable)
 
 	stmt := fmt.Sprintf(
