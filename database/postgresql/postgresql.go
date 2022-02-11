@@ -255,7 +255,7 @@ func (db *Database) CreateMsgPartition(msgType string) error {
 	stmt := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s PARTITION OF message FOR VALUES IN (%s)",
 		partitionTable,
-		msgType,
+		msg,
 	)
 	_, err := db.Sql.Exec(stmt)
 
