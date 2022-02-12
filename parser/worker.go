@@ -118,6 +118,43 @@ func (w Worker) Process(height int64) error {
 	return w.ExportBlock(block, events, txs, vals)
 }
 
+func (w Worker) ForceProcess(height int64) error {
+	if height == 0 {
+		cfg := config.Cfg.Parser
+
+		genesisDoc, genesisState, err := utils.GetGenesisDocAndState(cfg.GenesisFilePath, w.node)
+		if err != nil {
+			return fmt.Errorf("failed to get genesis: %s", err)
+		}
+
+		return w.HandleGenesis(genesisDoc, genesisState)
+	}
+
+	w.logger.Debug("processing block", "height", height)
+
+	block, err := w.node.Block(height)
+	if err != nil {
+		return fmt.Errorf("failed to get block from node: %s", err)
+	}
+
+	events, err := w.node.BlockResults(height)
+	if err != nil {
+		return fmt.Errorf("failed to get block results from node: %s", err)
+	}
+
+	txs, err := w.node.Txs(block)
+	if err != nil {
+		return fmt.Errorf("failed to get transactions for block: %s", err)
+	}
+
+	vals, err := w.node.Validators(height)
+	if err != nil {
+		return fmt.Errorf("failed to get validators for block: %s", err)
+	}
+
+	return w.ExportBlock(block, events, txs, vals)
+}
+
 // HandleGenesis accepts a GenesisDoc and calls all the registered genesis handlers
 // in the order in which they have been registered.
 func (w Worker) HandleGenesis(genesisDoc *tmtypes.GenesisDoc, appState map[string]json.RawMessage) error {

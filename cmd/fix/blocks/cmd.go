@@ -15,6 +15,7 @@ func NewBlocksCmd(parseConfig *parse.Config) *cobra.Command {
 
 	cmd.AddCommand(
 		blocksCmd(parseConfig),
+		heightsCmd(parseConfig),
 	)
 
 	return cmd
