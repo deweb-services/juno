@@ -121,19 +121,22 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 }
 
 // CreateTxPartition implements database.Database
-func (db *Database) CreateTxPartition(height int64) (int64, error) {
+func (db *Database) CreatePartition(table string, height int64) (int64, error) {
+
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
-	// partitionTable := fmt.Sprintf("tx_partition_%d", partitionId)
+	partitionTable := fmt.Sprintf("%s_%d", table, partitionId)
+
+	fmt.Printf("Create partition %s table: %s", table, partitionTable)
 
 	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS tx_partition_%d PARTITION OF transaction FOR VALUES IN (%d)",
-		partitionId,
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF transaction FOR VALUES IN (%d)",
+		partitionTable,
 		partitionId,
 	)
-
 	_, err := db.Sql.Exec(stmt)
+
 	if err != nil {
-		return 0, fmt.Errorf("failed to create new partition, error:  %s", err)
+		return 0, err
 	}
 
 	return partitionId, nil
@@ -246,10 +249,10 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 // SaveMessage implements database.Database
 func (db *Database) SaveMessage(msg *types.Message) error {
 	stmt := `
-INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses) 
-VALUES ($1, $2, $3, $4, $5)`
+INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id) 
+VALUES ($1, $2, $3, $4, $5, $6)`
 
-	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses))
+	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), msg.PartitionID)
 	return err
 }
 
@@ -294,4 +297,13 @@ USING transaction
 WHERE message.transaction_hash = transaction.hash AND transaction.height = $1
 `, height)
 	return err
+}
+
+// DropTable removes given table from db
+func (db *Database) DropTable(name string) error {
+	_, err := db.Sql.Exec(`DROP TABLE IF EXISTS %s`, name)
+	if err != nil {
+		return err
+	}
+	return nil
 }
