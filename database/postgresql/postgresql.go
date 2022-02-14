@@ -126,11 +126,12 @@ func (db *Database) CreatePartition(table string, height int64) (int64, error) {
 	partitionId := height / int64(config.Cfg.Database.PartitionSize)
 	partitionTable := fmt.Sprintf("%s_%d", table, partitionId)
 
-	fmt.Printf("Create partition %s table: %s", table, partitionTable)
+	fmt.Printf("Create %s table partition: %s", table, partitionTable)
 
 	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF transaction FOR VALUES IN (%d)",
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%d)",
 		partitionTable,
+		table,
 		partitionId,
 	)
 	_, err := db.Sql.Exec(stmt)
