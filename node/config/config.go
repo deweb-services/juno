@@ -13,19 +13,21 @@ const (
 )
 
 type Config struct {
-	Type    string  `yaml:"type"`
-	Details Details `yaml:"-"`
+	Type           string  `yaml:"type"`
+	Details        Details `yaml:"-"`
+	ActionsDetails Details `yaml:"-"`
 }
 
-func NewConfig(nodeType string, details Details) Config {
+func NewConfig(nodeType string, details Details, actionsDetails Details) Config {
 	return Config{
-		Type:    nodeType,
-		Details: details,
+		Type:           nodeType,
+		Details:        details,
+		ActionsDetails: actionsDetails,
 	}
 }
 
 func DefaultConfig() Config {
-	return NewConfig(TypeRemote, remote.DefaultDetails())
+	return NewConfig(TypeRemote, remote.DefaultDetails(), remote.DefaultDetails())
 }
 
 func (s *Config) UnmarshalYAML(n *yaml.Node) error {
