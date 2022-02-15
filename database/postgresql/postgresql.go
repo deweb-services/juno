@@ -251,9 +251,18 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 func (db *Database) SaveMessage(msg *types.Message) error {
 	stmt := `
 INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id, height) 
-VALUES ($1, $2, $3, $4, $5, $6, $7)`
+VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`
 
 	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), msg.PartitionID, msg.Height)
+	return err
+}
+
+// UpdateMessage implements database.Database
+func (db *Database) UpdateMessage(msg *types.Message) error {
+	stmt := `
+	UPDATE message SET height = $1, partition_id = $2 WHERE transaction_hash = $3 AND involved_accounts_addresses = $4`
+
+	_, err := db.Sql.Exec(stmt, msg.Height, msg.PartitionID, msg.TxHash, pq.Array(msg.Addresses))
 	return err
 }
 

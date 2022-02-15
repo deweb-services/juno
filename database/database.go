@@ -46,6 +46,10 @@ type Database interface {
 	// An error is returned if the operation fails.
 	SaveMessage(msg *types.Message) error
 
+	// UpdateMessage updated height and partitionId of a single message.
+	// An error is returned if the operation fails.
+	UpdateMessage(msg *types.Message) error
+
 	// Close closes the connection to the database
 	Close()
 }
