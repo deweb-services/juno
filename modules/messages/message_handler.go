@@ -35,7 +35,7 @@ func HandleMsg(
 
 	fmt.Println("tx_hash, index, partition_id: ", tx.TxHash, index, msgPartitionID)
 
-	err = db.UpdateMessage(types.NewMessage(
+	db.UpdateMessage(types.NewMessage(
 		tx.TxHash,
 		index,
 		proto.MessageName(msg),
@@ -44,10 +44,6 @@ func HandleMsg(
 		msgPartitionID,
 		tx.Height,
 	))
-
-	if err != nil {
-		return err
-	}
 
 	return db.SaveMessage(types.NewMessage(
 		tx.TxHash,
