@@ -14,7 +14,7 @@ import (
 // HandleMsg represents a message handler that stores the given message inside the proper database table
 func HandleMsg(
 	index int, msg sdk.Msg, tx *types.Tx,
-	parseAddresses MessageAddressesParser, cdc codec.Marshaler, db database.Database,
+	parseAddresses MessageAddressesParser, cdc codec.Codec, db database.Database,
 ) error {
 	msgPartitionID, err := db.CreatePartition("message", tx.Height)
 	if err != nil {
@@ -35,7 +35,7 @@ func HandleMsg(
 
 	fmt.Println("tx_hash, index, partition_id: ", tx.TxHash, index, msgPartitionID)
 
-	err = db.UpdateMessage(types.NewMessage(
+	db.UpdateMessage(types.NewMessage(
 		tx.TxHash,
 		index,
 		proto.MessageName(msg),
@@ -44,10 +44,6 @@ func HandleMsg(
 		msgPartitionID,
 		tx.Height,
 	))
-
-	if err != nil {
-		return err
-	}
 
 	return db.SaveMessage(types.NewMessage(
 		tx.TxHash,
