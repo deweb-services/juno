@@ -251,7 +251,7 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 func (db *Database) SaveMessage(msg *types.Message) error {
 	stmt := `
 INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id, height) 
-VALUES ($1, $2, $3, $4, $5, $6, $7)`
+VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`
 
 	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), msg.PartitionID, msg.Height)
 	return err
