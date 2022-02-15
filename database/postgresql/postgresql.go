@@ -257,6 +257,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`
 	return err
 }
 
+// UpdateMessage implements database.Database
+func (db *Database) UpdateMessage(msg *types.Message) error {
+	stmt := `
+	UPDATE message SET height = $1, partition_id = $2 WHERE transaction_hash = $3 AND involved_accounts_addresses = $4`
+
+	_, err := db.Sql.Exec(stmt, msg.Height, msg.PartitionID, msg.TxHash, pq.Array(msg.Addresses))
+	return err
+}
+
 // Close implements database.Database
 func (db *Database) Close() {
 	err := db.Sql.Close()
