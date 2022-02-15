@@ -34,7 +34,7 @@ func blocksCmd(parseConfig *parse.Config) *cobra.Command {
 			k := config.Cfg.Parser.StartHeight
 			fmt.Printf("Refetching missing blocks and transactions from height %d ... \n", k)
 			for ; k <= height; k++ {
-				err := worker.Process(k)
+				err := worker.Process(k, true)
 				if err != nil {
 					return fmt.Errorf("error while re-fetching block %d: %s", k, err)
 				}
