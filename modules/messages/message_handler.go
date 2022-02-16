@@ -14,7 +14,7 @@ func HandleMsg(
 	index int, msg sdk.Msg, tx *types.Tx,
 	parseAddresses MessageAddressesParser, cdc codec.Codec, db database.Database,
 ) error {
-	msgPartitionID, err := db.CreatePartition("message", tx.Height)
+	msgPartitionID, err := db.CreatePartition("message_partition", tx.Height)
 	if err != nil {
 		return err
 	}
