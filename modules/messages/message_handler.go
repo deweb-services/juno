@@ -7,7 +7,6 @@ import (
 
 	"github.com/forbole/juno/v2/database"
 	"github.com/forbole/juno/v2/types"
-	"github.com/forbole/juno/v2/types/config"
 )
 
 // HandleMsg represents a message handler that stores the given message inside the proper database table
@@ -15,7 +14,10 @@ func HandleMsg(
 	index int, msg sdk.Msg, tx *types.Tx,
 	parseAddresses MessageAddressesParser, cdc codec.Codec, db database.Database,
 ) error {
-	msgPartitionID := tx.Height / int64(config.Cfg.Database.PartitionSize)
+	msgPartitionID, err := db.CreatePartition("message", tx.Height)
+	if err != nil {
+		return err
+	}
 
 	// Get the involved addresses
 	addresses, err := parseAddresses(cdc, msg)
