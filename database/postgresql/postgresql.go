@@ -15,7 +15,6 @@ import (
 
 	"github.com/forbole/juno/v2/database"
 	"github.com/forbole/juno/v2/types"
-	"github.com/forbole/juno/v2/types/config"
 )
 
 // Builder creates a database connection with the given database connection info
@@ -120,29 +119,6 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 	return err
 }
 
-// CreateTxPartition implements database.Database
-func (db *Database) CreatePartition(table string, height int64) (int64, error) {
-
-	partitionId := height / int64(config.Cfg.Database.PartitionSize)
-	partitionTable := fmt.Sprintf("%s_%d", table, partitionId)
-
-	fmt.Printf("Create %s table partition: %s", table, partitionTable)
-
-	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%d)",
-		partitionTable,
-		table,
-		partitionId,
-	)
-	_, err := db.Sql.Exec(stmt)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return partitionId, nil
-}
-
 // SaveTx implements database.Database
 func (db *Database) SaveTx(tx *types.Tx, partitionId int64) error {
 	sqlStatement := `
@@ -192,6 +168,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT DO N
 		tx.GasWanted, tx.GasUsed, tx.RawLog, string(logsBz),
 		partitionId,
 	)
+	return err
+}
+
+// UpdateTransaction implements database.Database
+func (db *Database) UpdateTransaction(tx *types.Tx, partitionId int64) error {
+	stmt := `
+	UPDATE transaction SET partition_id = $1 WHERE hash = $2 AND height = $3`
+
+	_, err := db.Sql.Exec(stmt, partitionId, tx.TxHash, tx.Height)
 	return err
 }
 

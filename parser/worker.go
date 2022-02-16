@@ -242,18 +242,15 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 // An error is returned if the write fails.
 func (w Worker) ExportTxs(txs []*types.Tx, height int64) error {
 	if len(txs) > 0 {
-		// create partition table if not exist for transaction
-		partitionId, err := w.db.CreatePartition("transaction", height)
-		if err != nil {
-			return err
-		}
+		partitionId := height / int64(config.Cfg.Database.PartitionSize)
 
 		// Handle all the transactions inside the block
 		for _, tx := range txs {
-			// Save the transaction itself
-			err := w.db.SaveTx(tx, partitionId)
+
+			// Update the transaction 
+			err := w.db.UpdateTransaction(tx, partitionId)
 			if err != nil {
-				return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
+				return fmt.Errorf("failed to update transaction with hash %s: %s", tx.TxHash, err)
 			}
 
 			// Call the tx handlers
