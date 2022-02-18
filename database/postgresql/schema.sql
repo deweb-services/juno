@@ -13,6 +13,7 @@ CREATE TABLE block
     proposer_address TEXT REFERENCES validator (consensus_address),
     timestamp        TIMESTAMP WITHOUT TIME ZONE NOT NULL
 );
+CREATE INDEX block_height_index ON block (height);
 CREATE INDEX block_hash_index ON block (hash);
 CREATE INDEX block_proposer_address_index ON block (proposer_address);
 
@@ -22,7 +23,7 @@ CREATE TABLE pre_commit
     height            BIGINT                      NOT NULL,
     timestamp         TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     voting_power      BIGINT                      NOT NULL,
-    proposer_priority INTEGER                     NOT NULL,
+    proposer_priority BIGINT                      NOT NULL,
     UNIQUE (validator_address, timestamp)
 );
 CREATE INDEX pre_commit_validator_address_index ON pre_commit (validator_address);
@@ -30,7 +31,7 @@ CREATE INDEX pre_commit_height_index ON pre_commit (height);
 
 CREATE TABLE transaction
 (
-    hash         TEXT    NOT NULL UNIQUE,
+    hash         TEXT    NOT NULL,
     height       BIGINT  NOT NULL REFERENCES block (height),
     success      BOOLEAN NOT NULL,
 
@@ -48,23 +49,30 @@ CREATE TABLE transaction
     gas_used     BIGINT           DEFAULT 0,
     raw_log      TEXT,
     logs         JSONB,
-
-    /* Psql partition */
+     /* Psql partition */
     partition_id BIGINT NOT NULL,
-    PRIMARY KEY(hash, partition_id)
+    UNIQUE (hash, partition_id)
 )PARTITION BY LIST(partition_id);
 CREATE INDEX transaction_hash_index ON transaction (hash);
 CREATE INDEX transaction_height_index ON transaction (height);
+CREATE INDEX transaction_partition_id_index ON transaction (partition_id);
 
 CREATE TABLE message
 (
-    transaction_hash            TEXT   NOT NULL REFERENCES transaction (hash),
+    transaction_hash            TEXT   NOT NULL,
     index                       BIGINT NOT NULL,
     type                        TEXT   NOT NULL,
     value                       JSONB  NOT NULL,
-    involved_accounts_addresses TEXT[] NULL
-)PARTITION BY LIST(type);;
+    involved_accounts_addresses TEXT[] NOT NULL,
+
+    /* Psql partition */
+    partition_id                BIGINT NOT NULL,
+    height                      BIGINT NOT NULL,
+    FOREIGN KEY (transaction_hash, partition_id) REFERENCES transaction (hash, partition_id)
+)PARTITION BY LIST(partition_id);
 CREATE INDEX message_transaction_hash_index ON message (transaction_hash);
+CREATE INDEX message_type_index ON message (type);
+CREATE INDEX message_involved_accounts_index ON message (involved_accounts_addresses);
 
 CREATE TABLE pruning
 (
