@@ -59,14 +59,16 @@ func (w Worker) Start() {
 	log.Printf("\n queue: %v", w.queue)
 
 	for i := range w.queue {
-		if err := w.ProcessIfNotExists(i); err != nil {
-			// re-enqueue any failed job
-			// TODO: Implement exponential backoff or max retries for a block height.
-			go func() {
-				w.logger.Error("re-enqueueing failed block", "height", i, "err", err)
-				w.queue <- i
-			}()
-		}
+		log.Printf("\n ->: %v", i)
+
+		// if err := w.ProcessIfNotExists(i); err != nil {
+		// 	// re-enqueue any failed job
+		// 	// TODO: Implement exponential backoff or max retries for a block height.
+		// 	go func() {
+		// 		w.logger.Error("re-enqueueing failed block", "height", i, "err", err)
+		// 		w.queue <- i
+		// 	}()
+		// }
 
 		logging.WorkerHeight.WithLabelValues(fmt.Sprintf("%d", w.index)).Set(float64(i))
 	}
