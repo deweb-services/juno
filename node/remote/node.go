@@ -188,7 +188,7 @@ func (cp *Node) TxSearch(query string, page *int, perPage *int, orderBy string) 
 
 // SubscribeEvents implements node.Node
 func (cp *Node) SubscribeEvents(subscriber, query string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	eventCh, err := cp.client.Subscribe(ctx, subscriber, query)
 	return eventCh, cancel, err
 }

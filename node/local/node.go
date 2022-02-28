@@ -522,7 +522,7 @@ func (cp *Node) TxSearch(query string, pagePtr *int, perPagePtr *int, orderBy st
 
 // SubscribeEvents implements node.Node
 func (cp *Node) SubscribeEvents(subscriber, query string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error) {
-	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	eventCh := make(<-chan tmctypes.ResultEvent)
 	return eventCh, cancel, nil
 }
