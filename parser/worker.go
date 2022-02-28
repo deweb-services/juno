@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/forbole/juno/v2/logging"
+	"github.com/rs/zerolog/log"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 
@@ -53,6 +54,9 @@ func NewWorker(index int, ctx *Context) Worker {
 // given worker queue. Any failed job is logged and re-enqueued.
 func (w Worker) Start() {
 	logging.WorkerCount.Inc()
+	log.Printf("\n worker: %v", w)
+
+	log.Printf("\n queue: %v", w.queue)
 
 	for i := range w.queue {
 		if err := w.ProcessIfNotExists(i); err != nil {
