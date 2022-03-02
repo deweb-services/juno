@@ -8,7 +8,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"google.golang.org/grpc"
 
 	constypes "github.com/tendermint/tendermint/consensus/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -32,14 +31,13 @@ var (
 // chain SDK REST client that allows for essential data queries.
 type Node struct {
 	ctx             context.Context
-	codec           codec.Marshaler
+	codec           codec.Codec
 	client          *httpclient.HTTP
 	txServiceClient tx.ServiceClient
-	grpcConnection  *grpc.ClientConn
 }
 
 // NewNode allows to build a new Node instance
-func NewNode(cfg *Details, codec codec.Marshaler) (*Node, error) {
+func NewNode(cfg *Details, codec codec.Codec) (*Node, error) {
 	httpClient, err := jsonrpcclient.DefaultHTTPClient(cfg.RPC.Address)
 	if err != nil {
 		return nil, err
@@ -73,7 +71,6 @@ func NewNode(cfg *Details, codec codec.Marshaler) (*Node, error) {
 
 		client:          rpcClient,
 		txServiceClient: tx.NewServiceClient(grpcConnection),
-		grpcConnection:  grpcConnection,
 	}, nil
 }
 
@@ -115,7 +112,7 @@ func (cp *Node) Validators(height int64) (*tmctypes.ResultValidators, error) {
 	}
 
 	page := 1
-	perPage := 100 // maximum 100 entries per page
+	perPage := 100
 	stop := false
 	for !stop {
 		result, err := cp.client.Validators(cp.ctx, &height, &page, &perPage)
@@ -125,8 +122,9 @@ func (cp *Node) Validators(height int64) (*tmctypes.ResultValidators, error) {
 		vals.Validators = append(vals.Validators, result.Validators...)
 		vals.Count += result.Count
 		vals.Total = result.Total
+
 		page += 1
-		stop = vals.Count == vals.Total
+		stop = vals.Count == len(vals.Validators)
 	}
 
 	return vals, nil
@@ -203,10 +201,5 @@ func (cp *Node) Stop() {
 	err := cp.client.Stop()
 	if err != nil {
 		panic(fmt.Errorf("error while stopping proxy: %s", err))
-	}
-
-	err = cp.grpcConnection.Close()
-	if err != nil {
-		panic(fmt.Errorf("error while closing gRPC connection: %s", err))
 	}
 }
