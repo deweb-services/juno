@@ -55,7 +55,7 @@ func (w Worker) Start() {
 	logging.WorkerCount.Inc()
 
 	for i := range w.queue {
-		if err := w.Process(i); err != nil {
+		if err := w.ProcessIfNotExists(i); err != nil {
 			// re-enqueue any failed job
 			// TODO: Implement exponential backoff or max retries for a block height.
 			go func() {
@@ -68,10 +68,10 @@ func (w Worker) Start() {
 	}
 }
 
-// process defines the job consumer workflow. It will fetch a block for a given
-// height and associated metadata and export it to a database. It returns an
+// ProcessIfNotExists defines the job consumer workflow. It will fetch a block for a given
+// height and associated metadata and export it to a database if it does not exist yet. It returns an
 // error if any export process fails.
-func (w Worker) Process(height int64) error {
+func (w Worker) ProcessIfNotExists(height int64) error {
 	exists, err := w.db.HasBlock(height)
 	if err != nil {
 		return fmt.Errorf("error while searching for block: %s", err)
@@ -82,6 +82,12 @@ func (w Worker) Process(height int64) error {
 		return nil
 	}
 
+	return w.Process(height)
+}
+
+// Process fetches  a block for a given height and associated metadata and export it to a database.
+// It returns an error if any export process fails.
+func (w Worker) Process(height int64) error {
 	if height == 0 {
 		cfg := config.Cfg.Parser
 
@@ -198,16 +204,8 @@ func (w Worker) ExportBlock(
 		}
 	}
 
-	if len(txs) > 0 {
-		// create partition table if not exist for transaction
-		partitionId, err := w.db.CreatePartition("transaction",  b.Block.Height)
-		if err != nil {
-			return err
-		}
-		// Export the transactions
-		return w.ExportTxs(txs, partitionId)
-	}
-	return nil
+	// Export the transactions
+	return w.ExportTxs(txs)
 }
 
 // ExportCommit accepts a block commitment and a corresponding set of
@@ -246,12 +244,11 @@ func (w Worker) ExportCommit(commit *tmtypes.Commit, vals *tmctypes.ResultValida
 
 // ExportTxs accepts a slice of transactions and persists then inside the database.
 // An error is returned if the write fails.
-func (w Worker) ExportTxs(txs []*types.Tx, partitionId int64) error {
-
+func (w Worker) ExportTxs(txs []*types.Tx) error {
 	// Handle all the transactions inside the block
 	for _, tx := range txs {
 		// Save the transaction itself
-		err := w.db.SaveTx(tx, partitionId)
+		err := w.db.SaveTx(tx)
 		if err != nil {
 			return fmt.Errorf("failed to handle transaction with hash %s: %s", tx.TxHash, err)
 		}

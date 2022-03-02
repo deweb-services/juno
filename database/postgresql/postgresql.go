@@ -91,14 +91,26 @@ func (db *Database) RunTx(fn func(tx *sql.Tx) error) error {
 	return nil
 }
 
-// -------------------------------------------------------------------------------------------------------------------
+// createPartitionIfNotExists creates a new partition having the given partition id if not existing
+func (db *Database) createPartitionIfNotExists(table string, partitionID int64) error {
+	partitionTable := fmt.Sprintf("%s_%d", table, partitionID)
 
-// LastBlockHeight implements database.Database
-func (db *Database) LastBlockHeight() (int64, error) {
-	var height int64
-	err := db.Sql.QueryRow(`SELECT coalesce(MAX(height),0) AS height FROM block;`).Scan(&height)
-	return height, err
+	stmt := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%d)",
+		partitionTable,
+		table,
+		partitionID,
+	)
+	_, err := db.Sql.Exec(stmt)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
+
+// -------------------------------------------------------------------------------------------------------------------
 
 // HasBlock implements database.Database
 func (db *Database) HasBlock(height int64) (bool, error) {
@@ -120,31 +132,24 @@ VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
 	return err
 }
 
-// CreateTxPartition implements database.Database
-func (db *Database) CreatePartition(table string, height int64) (int64, error) {
+// SaveTx implements database.Database
+func (db *Database) SaveTx(tx *types.Tx) error {
+	var partitionID int64
 
-	partitionId := height / int64(config.Cfg.Database.PartitionSize)
-	partitionTable := fmt.Sprintf("%s_%d", table, partitionId)
-
-	fmt.Printf("Create %s table partition: %s", table, partitionTable)
-
-	stmt := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%d)",
-		partitionTable,
-		table,
-		partitionId,
-	)
-	_, err := db.Sql.Exec(stmt)
-
-	if err != nil {
-		return 0, err
+	partitionSize := config.Cfg.Database.PartitionSize
+	if partitionSize > 0 {
+		partitionID = tx.Height / partitionSize
+		err := db.createPartitionIfNotExists("transaction", partitionID)
+		if err != nil {
+			return err
+		}
 	}
 
-	return partitionId, nil
+	return db.saveTxInsidePartition(tx, partitionID)
 }
 
-// SaveTx implements database.Database
-func (db *Database) SaveTx(tx *types.Tx, partitionId int64) error {
+// saveTxInsidePartition stores the given transaction inside the partition having the given id
+func (db *Database) saveTxInsidePartition(tx *types.Tx, partitionId int64) error {
 	sqlStatement := `
 INSERT INTO transaction 
     (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs, partition_id) 
@@ -249,11 +254,26 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 
 // SaveMessage implements database.Database
 func (db *Database) SaveMessage(msg *types.Message) error {
-	stmt := `
-INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id, height) 
-VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	var partitionID int64
+	partitionSize := config.Cfg.Database.PartitionSize
+	if partitionSize > 0 {
+		partitionID = msg.Height / partitionSize
+		err := db.createPartitionIfNotExists("message", partitionID)
+		if err != nil {
+			return err
+		}
+	}
 
-	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), msg.PartitionID, msg.Height)
+	return db.saveMessageInsidePartition(msg, partitionID)
+}
+
+// saveMessageInsidePartition stores the given message inside the partition having the provided id
+func (db *Database) saveMessageInsidePartition(msg *types.Message, partitionID int64) error {
+	stmt := `
+INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses, partition_id) 
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`
+
+	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses), partitionID)
 	return err
 }
 
@@ -298,13 +318,4 @@ USING transaction
 WHERE message.transaction_hash = transaction.hash AND transaction.height = $1
 `, height)
 	return err
-}
-
-// DropTable removes given table from db
-func (db *Database) DropTable(name string) error {
-	_, err := db.Sql.Exec(`DROP TABLE IF EXISTS %s`, name)
-	if err != nil {
-		return err
-	}
-	return nil
 }
