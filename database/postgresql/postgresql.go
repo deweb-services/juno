@@ -225,8 +225,8 @@ func (db *Database) SaveCommitSignatures(signatures []*types.CommitSig) error {
 // SaveMessage implements database.Database
 func (db *Database) SaveMessage(msg *types.Message) error {
 	stmt := `
-INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses) 
-VALUES ($1, $2, $3, $4, $5)`
+	INSERT INTO message(transaction_hash, index, type, value, involved_accounts_addresses) 
+	VALUES ($1, $2, $3, $4, $5)`
 
 	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Index, msg.Type, msg.Value, pq.Array(msg.Addresses))
 	return err
@@ -234,8 +234,8 @@ VALUES ($1, $2, $3, $4, $5)`
 
 func (db *Database) SaveTokenTransfer(msg *types.WasmTransferMsg) error {
 	stmt := `
-INSERT INTO token_transfer(transaction_hash, contract, sender, recipient, amount) 
-VALUES ($1, $2, $3, $4, $5)`
+	INSERT INTO token_transfer(transaction_hash, contract, sender, recipient, amount) 
+	VALUES ($1, $2, $3, $4, $5)`
 
 	_, err := db.Sql.Exec(stmt, msg.TxHash, msg.Contract, msg.Sender, msg.Recipient, msg.Amount)
 	return err

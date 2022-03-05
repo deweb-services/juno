@@ -8,8 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/forbole/juno/v2/logging"
-
 	"github.com/forbole/juno/v2/types/config"
 
 	"github.com/go-co-op/gocron"
@@ -57,7 +55,6 @@ func ParseCmd(cmdCfg *Config) *cobra.Command {
 func StartParsing(ctx *Context) error {
 	// Get the config
 	cfg := config.Cfg.Parser
-	logging.StartHeight.Add(float64(cfg.StartHeight))
 
 	// Start periodic operations
 	scheduler := gocron.NewScheduler(time.UTC)
@@ -102,55 +99,15 @@ func StartParsing(ctx *Context) error {
 
 	if cfg.ParseGenesis {
 		// Add the genesis to the queue if requested
-		exportQueue <- 0
+		queueTask := types.NewQueueTask(0)
+		exportQueue <- queueTask
 	}
 
-	if cfg.ParseOldBlocks {
-		go enqueueMissingBlocks(exportQueue, ctx)
-	}
-
-	if cfg.ParseNewBlocks {
-		go startNewBlockListener(exportQueue, ctx)
-	}
+	go startNewBlockListener(exportQueue, ctx)
 
 	// Block main process (signal capture will call WaitGroup's Done)
 	waitGroup.Wait()
 	return nil
-}
-
-// enqueueMissingBlocks enqueues jobs (block heights) for missed blocks starting
-// at the startHeight up until the latest known height.
-func enqueueMissingBlocks(exportQueue types.HeightQueue, ctx *Context) {
-	// Get the config
-	cfg := config.Cfg.Parser
-
-	// Get the latest height
-	latestBlockHeight, err := ctx.Node.LatestHeight()
-	if err != nil {
-		panic(fmt.Errorf("failed to get last block from RPCConfig client: %s", err))
-	}
-
-	if cfg.FastSync {
-		ctx.Logger.Info("fast sync is enabled, ignoring all previous blocks", "latest_block_height", latestBlockHeight)
-		for _, module := range ctx.Modules {
-			if mod, ok := module.(modules.FastSyncModule); ok {
-				err = mod.DownloadState(latestBlockHeight)
-				if err != nil {
-					ctx.Logger.Error("error while performing fast sync",
-						"err", err,
-						"last_block_height", latestBlockHeight,
-						"module", module.Name(),
-					)
-				}
-			}
-		}
-	} else {
-		ctx.Logger.Info("syncing missing blocks...", "latest_block_height", latestBlockHeight)
-		for i := cfg.StartHeight; i <= latestBlockHeight; i++ {
-			ctx.Logger.Debug("enqueueing missing block", "height", i)
-			exportQueue <- i
-		}
-	}
 }
 
 // startNewBlockListener subscribes to new block events via the Tendermint RPCConfig
@@ -171,7 +128,8 @@ func startNewBlockListener(exportQueue types.HeightQueue, ctx *Context) {
 		height := newBlock.Header.Height
 
 		ctx.Logger.Debug("enqueueing new block", "height", height)
-		exportQueue <- height
+		queueTask := types.NewQueueTask(height)
+		exportQueue <- queueTask
 	}
 }
 

@@ -3,6 +3,7 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/forbole/juno/v2/logging"
 
@@ -54,18 +55,26 @@ func NewWorker(index int, ctx *Context) Worker {
 func (w Worker) Start() {
 	logging.WorkerCount.Inc()
 
-	for i := range w.queue {
+	for task := range w.queue {
+		i := task.Height
 		if err := w.Process(i); err != nil {
 			// re-enqueue any failed job
-			// TODO: Implement exponential backoff or max retries for a block height.
 			go func() {
 				w.logger.Error("re-enqueueing failed block", "height", i, "err", err)
-				w.queue <- i
+				w.RetryBlock(task)
 			}()
 		}
 
 		logging.WorkerHeight.WithLabelValues(fmt.Sprintf("%d", w.index)).Set(float64(i))
 	}
+}
+
+func (w *Worker) RetryBlock(task types.QueueTask) {
+	task.DoRetry()
+	waitDuration := task.GetRetryTimeout()
+	w.logger.Info(fmt.Sprintf("Retry block after %v seconds", waitDuration))
+	time.Sleep(waitDuration)
+	w.queue <- task
 }
 
 // Process - process defines the job consumer workflow. It will fetch a block for a given

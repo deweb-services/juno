@@ -1,4 +1,4 @@
-package tokens
+package bridge
 
 type WasmMsgExecuteContract struct {
 	Sender   string

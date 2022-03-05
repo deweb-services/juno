@@ -19,6 +19,7 @@ type Config struct {
 	bytes []byte
 
 	Chain    ChainConfig           `yaml:"chain"`
+	Bridge   BridgeConfig          `yaml:"bridge"`
 	Node     nodeconfig.Config     `yaml:"node"`
 	Parser   parserconfig.Config   `yaml:"parsing"`
 	Database databaseconfig.Config `yaml:"database"`
@@ -80,4 +81,16 @@ func (cfg ChainConfig) IsModuleEnabled(moduleName string) bool {
 	}
 
 	return false
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type BridgedChainTokens struct {
+	Token string `yaml:"token"`
+}
+
+type BridgeConfig struct {
+	WalletAddress          string                        `yaml:"address"`
+	NetworksTokens         map[string]BridgedChainTokens `yaml:"networks"`
+	ConsensusModuleAddress string                        `yaml:"consensus_host"`
 }

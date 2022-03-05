@@ -55,6 +55,10 @@ type Node interface {
 	// the context and handle any errors appropriately.
 	SubscribeNewBlocks(subscriber string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error)
 
+	// GetMappingToExternalAddress requests mapping for provided address in external chain. The result of this request
+	// used to determine target address in bridge transactions
+	GetMappingToExternalAddress(address string, chain string) (types.ChainAddressMapping, error)
+
 	// Stop defers the node stop execution to the client.
 	Stop()
 }

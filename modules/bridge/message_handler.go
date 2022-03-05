@@ -1,4 +1,4 @@
-package tokens
+package bridge
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"github.com/forbole/juno/v2/types"
 )
 
-func ProcessWasmContractExecuteMessage(rawMsg []byte, tx *types.Tx, db database.Database) error {
+func (m *Module) processWasmContractExecuteMessage(rawMsg []byte, tx *types.Tx, db database.Database) error {
 	executeMsg := &WasmMsgExecuteContract{}
 	err := json.Unmarshal(rawMsg, executeMsg)
 	if err != nil {
@@ -21,20 +21,32 @@ func ProcessWasmContractExecuteMessage(rawMsg []byte, tx *types.Tx, db database.
 	transferRawMsg, ok := msgMap["transfer"]
 	if ok {
 		transferMsgBody := transferRawMsg.(map[string]interface{})
-		transferMsg, err := ProcessTokenTransferMsg(transferMsgBody)
+		transferMsg, err := m.processTokenTransferMsg(transferMsgBody)
 		if err != nil {
 			return fmt.Errorf("error processing contract execute msg as transfer msg: %w", err)
 		}
 		transferMsg.Contract = executeMsg.Contract
 		transferMsg.Sender = executeMsg.Sender
 		transferMsg.TxHash = tx.TxHash
+
+		if transferMsg.Recipient == m.bridgeWalletAddress {
+			tokenChain, ok := m.networkTokens[transferMsg.Contract]
+			if !ok {
+				m.logger.Info(fmt.Sprintf("received token with unknown target chain: %s from %s",
+					transferMsg.Contract, transferMsg.Sender))
+			}
+			err := m.processTokenTransferBridgeMsg(transferMsg, tokenChain.chain)
+			if err != nil {
+				m.logger.Error("error processing bridge transfer", err)
+			}
+		}
 		return db.SaveTokenTransfer(transferMsg)
 	}
 
 	return nil
 }
 
-func ProcessTokenTransferMsg(transferMsgBody map[string]interface{}) (*types.WasmTransferMsg, error) {
+func (m *Module) processTokenTransferMsg(transferMsgBody map[string]interface{}) (*types.WasmTransferMsg, error) {
 	amount, converted := transferMsgBody["amount"].(string)
 	if !converted {
 		return nil, fmt.Errorf("error converting amount from message")
@@ -47,7 +59,7 @@ func ProcessTokenTransferMsg(transferMsgBody map[string]interface{}) (*types.Was
 }
 
 // HandleMsg represents a message handler that stores the given message inside the proper database table
-func HandleMsg(
+func (m *Module) processMessage(
 	msg sdk.Msg, tx *types.Tx, cdc codec.Codec, db database.Database,
 ) error {
 	// Marshal the value properly
@@ -57,9 +69,10 @@ func HandleMsg(
 	}
 
 	messageType := proto.MessageName(msg)
-	if messageType == "cosmwasm.wasm.v1.MsgExecuteContract" {
-		err := ProcessWasmContractExecuteMessage(bz, tx, db)
-		return err
+	m.logger.Info(fmt.Sprintf("process message on block %d: %s", tx.Height, messageType))
+	switch messageType {
+	case "cosmwasm.wasm.v1.MsgExecuteContract":
+		err = m.processWasmContractExecuteMessage(bz, tx, db)
 	}
-	return nil
+	return err
 }

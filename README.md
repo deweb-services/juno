@@ -1,69 +1,55 @@
-<div align="center">
-  <h1> Juno </h1>
-</div>
+# DWS bridge component
 
-![banner](.docs/.img/logo.png)
+This product based on juno (https://github.com/forbole/juno) implementation of blockchain data aggregator and exporter.
+It is part of DWS bridge to connected non-Cosmos networks. 
 
-> This branch is intended to be used with Cosmos SDK `v0.40.x`.
+## Config
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/desmos-labs/juno/Tests)](https://github.com/forbole/juno/actions?query=workflow%3ATests)
-[![Go Report Card](https://goreportcard.com/badge/github.com/forbole/juno)](https://goreportcard.com/report/github.com/forbole/juno)
-[![Codecov](https://img.shields.io/codecov/c/github/desmos-labs/juno)](https://codecov.io/gh/desmos-labs/juno/branch/cosmos-v0.40.x)
+Create config file in bridge home directory. Create empty sceleton with **init** command
 
-> Juno is a Cosmos Hub blockchain data aggregator and exporter that provides the ability for developers and clients to query for indexed chain data.
+Config consists of parts:
+- chain - chain specific settings. Important parameter _modules_ - list of modules to run
+- bridge - settings for tokens transfers
+- node - setting for blockchain node
+- parsing - settings for parser
+- database - settings for DB for persistence
+- logging - logging settings
 
-## Table of Contents
-  - [Background](#background)
-  - [Usage](#usage)
-  - [GraphQL integration](#graphql-integration)
-  - [Contributing](#contributing)
-  - [License](#license)
+### Chain config
 
-## Background
-This version of Juno is a fork of [FissionLabs's Juno](https://github.com/fissionlabsio/juno). 
-
-The main reason behind the fork what to improve the original project by: 
-
-1. allowing different databases types as data storage spaces;
-2. creating a highly modular code that allows for easy customization.
-
-We achieved the first objective by supporting both PostgreSQL and MongoDB. We also reviewed the code design by using a database interface so that you can implement whatever database backend you prefer most. 
-
-On the other hand, to achieve a highly modular code, we implemented extension points through the `worker.RegisterBlockHandler`, `worker.RegisterTxHandler` and `worker.RegisterMsgHandler` methods. You can use those to extend the default working of the code (which simply parses and saves the data on the database) with whatever operation you want.    
-
-## Compatibility table
-Since the Cosmos SDK has evolved a lot, we have different versions of Juno available.
-
-| Cosmos SDK Version | Juno branch |
-| :----------------: | :---------: | 
-| `v0.37.x` | `cosmos-v0.37.x` |
-| `v0.38.x` | `cosmos-v0.38.x` |
-| `v0.39.x` | `cosmos-v0.39.x` |
-| Stargate <br> (`v0.40.x`, `v0.41.x`, `v0.42.x`) | `cosmos-v0.40.x` |
-
-## Usage
-To know how to setup and run Juno, please refer to the [docs folder](.docs).
-
-## Testing
-If you want to test the code, you can do so by running
-
-```shell
-$ make test-unit
+Value for DWS bridge:
+```
+chain:
+    bech32_prefix: deweb
+    modules: [bridge_transactions]
 ```
 
-**Note**: Requires [Docker](https://docker.com).
+### Bridge config
+Settings:
+- address - wallet address of bridge, watching for transfers to this address
+- networks - list of bridged networks and wrapped tokens addresses
+- consensus_host - address for notifications of requested transfers
 
-This will:
-1. Create a Docker container running a PostgreSQL database.
-2. Run all the tests using that database as support.
+Example value:
+```
+bridge:
+    address: deweb1rl3wl5v7cln6m3hekp39lfe6244t420mnc540m
+    networks:
+        sia:
+            token: deweb14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s03q9ga
+    consensus_host: http://localhost:8083
+```
 
-## GraphQL integration
-If you want to know how to run a GraphQL server that allows to expose the parsed data, please refer to the following guides: 
-
-- [PostgreSQL setup with GraphQL](.docs/postgres-graphql-setup.md)
-
-## Contributing
-Contributions are welcome! Please open an Issues or Pull Request for any changes.
-
-## License
-[CCC0 1.0 Universal](https://creativecommons.org/share-your-work/public-domain/cc0/)
+Networks config part used for mapping between wrapped token and target network. In example added mapping between token
+and network SIA. If we find transaction to _address_, checking transferred token. By token determined network name
+to which transfer requested. Then performing request ot node (grpc) for stored mapping between transaction creator and
+address in target network. When mapping found creating JSON and sending POST request to _consensus_host_. Amount of
+tokens determined from ERC20 wrapped token transfer. Request JSON
+example:
+```
+{
+    "chain":"sia",
+    "address":"siaaddress",
+    "amount":"200"
+}
+```

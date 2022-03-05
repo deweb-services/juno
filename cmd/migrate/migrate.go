@@ -90,15 +90,7 @@ func MigrateConfig() (Config, error) {
 			cfg.Database.MaxOpenConnections,
 			cfg.Database.MaxIdleConnections,
 		),
-		parserconfig.NewParsingConfig(
-			cfg.Parsing.Workers,
-			cfg.Parsing.ParseNewBlocks,
-			cfg.Parsing.ParseOldBlocks,
-			cfg.Parsing.ParseGenesis,
-			cfg.Parsing.GenesisFilePath,
-			cfg.Parsing.StartHeight,
-			cfg.Parsing.FastSync,
-		),
+		parserconfig.NewParsingConfig(cfg.Parsing.Workers, cfg.Parsing.ParseGenesis, cfg.Parsing.GenesisFilePath, cfg.Parsing.FastSync),
 		loggingconfig.NewLoggingConfig(
 			cfg.Logging.LogLevel,
 			cfg.Logging.LogFormat,

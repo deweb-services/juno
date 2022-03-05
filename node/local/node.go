@@ -210,13 +210,13 @@ func createAndStartIndexerService(
 
 	switch config.TxIndex.Indexer {
 	case "kv":
-		store, err := dbProvider(&tmnode.DBContext{"tx_index", config})
+		kvStore, err := dbProvider(&tmnode.DBContext{ID: "tx_index", Config: config})
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+		txIndexer = kv.NewTxIndex(kvStore)
+		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(kvStore, []byte("block_events")))
 	default:
 		txIndexer = &null.TxIndex{}
 		blockIndexer = &blockidxnull.BlockerIndexer{}
@@ -530,6 +530,15 @@ func (cp *Node) SubscribeEvents(subscriber, query string) (<-chan tmctypes.Resul
 // SubscribeNewBlocks implements node.Node
 func (cp *Node) SubscribeNewBlocks(subscriber string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error) {
 	return cp.SubscribeEvents(subscriber, "tm.event = 'NewBlock'")
+}
+
+func (cp *Node) GetMappingToExternalAddress(address string, chain string) (types.ChainAddressMapping, error) {
+	resultedMapping := types.ChainAddressMapping{
+		Address:         "",
+		Chain:           "",
+		ExternalAddress: "",
+	}
+	return resultedMapping, nil
 }
 
 // Stop implements node.Node

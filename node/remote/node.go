@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"fmt"
+	dewebtypes "github.com/deweb-services/deweb/x/deweb/types"
 	"net/http"
 	"time"
 
@@ -34,6 +35,7 @@ type Node struct {
 	codec           codec.Codec
 	client          *httpclient.HTTP
 	txServiceClient tx.ServiceClient
+	dewebClient     dewebtypes.QueryClient
 }
 
 // NewNode allows to build a new Node instance
@@ -65,12 +67,15 @@ func NewNode(cfg *Details, codec codec.Codec) (*Node, error) {
 		return nil, err
 	}
 
+	dewebClient := dewebtypes.NewQueryClient(grpcConnection)
+
 	return &Node{
 		ctx:   context.Background(),
 		codec: codec,
 
 		client:          rpcClient,
 		txServiceClient: tx.NewServiceClient(grpcConnection),
+		dewebClient:     dewebClient,
 	}, nil
 }
 
@@ -184,6 +189,10 @@ func (cp *Node) TxSearch(query string, page *int, perPage *int, orderBy string) 
 	return cp.client.TxSearch(cp.ctx, query, false, page, perPage, orderBy)
 }
 
+func (cp *Node) RequestChainMapping(query string, page *int, perPage *int, orderBy string) (*tmctypes.ResultTxSearch, error) {
+	return cp.client.TxSearch(cp.ctx, query, false, page, perPage, orderBy)
+}
+
 // SubscribeEvents implements node.Node
 func (cp *Node) SubscribeEvents(subscriber, query string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -194,6 +203,29 @@ func (cp *Node) SubscribeEvents(subscriber, query string) (<-chan tmctypes.Resul
 // SubscribeNewBlocks implements node.Node
 func (cp *Node) SubscribeNewBlocks(subscriber string) (<-chan tmctypes.ResultEvent, context.CancelFunc, error) {
 	return cp.SubscribeEvents(subscriber, "tm.event = 'NewBlock'")
+}
+
+func (cp *Node) GetMappingToExternalAddress(address string, chain string) (types.ChainAddressMapping, error) {
+	var resultedMapping types.ChainAddressMapping
+
+	mappingRequest := &dewebtypes.QueryFilterChainMappingsRecordsRequest{
+		Owner: address,
+		Chain: chain,
+	}
+	reqResponse, err := cp.dewebClient.FilterChainMappingsRecords(cp.ctx, mappingRequest)
+	if err != nil {
+		return resultedMapping, fmt.Errorf("error quering for mapping for address %s in chain %s: %w",
+			address, chain, err)
+	}
+	for _, rec := range reqResponse.Records {
+		if rec.Deleted {
+			continue
+		}
+		resultedMapping.ExternalAddress = rec.ExtAddress
+		resultedMapping.Chain = chain
+		resultedMapping.Address = address
+	}
+	return resultedMapping, nil
 }
 
 // Stop implements node.Node
